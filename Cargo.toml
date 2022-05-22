@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 lalrpop-util = "*"
 regex = "*"
+uuid = { version = "1.0.0", features = ["v4"] }
 
 [build-dependencies]
 lalrpop = { version = "^0.19", features = ["lexer"] }

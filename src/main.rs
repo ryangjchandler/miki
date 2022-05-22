@@ -6,6 +6,8 @@ lalrpop_mod!(parser);
 mod prelude;
 mod ast;
 
+use std::{fs::File, process::{Command}, env::args};
+
 use ast::{Stmt, Expr, Block};
 use parser::ProgramParser;
 
@@ -22,9 +24,9 @@ println!("fib(30): {}", fib(30))
 "###;
 
 fn main() {
-    // shell();
-
-    let ast = ProgramParser::new().parse(PROGRAM).unwrap();
+    let file = std::env::args().nth(1).unwrap();
+    let contents = std::fs::read_to_string(file).unwrap();
+    let ast = ProgramParser::new().parse(&contents).unwrap();
 
     let mut compiled = start_compiler();
     for stmt in ast.iter() {
@@ -45,7 +47,17 @@ fn main() {
     }
     compiled.push_str("\n}");
 
-    std::fs::write("output.rs", compiled).unwrap();
+    let temp_file = get_temp_file();
+    File::create(&temp_file).unwrap();
+
+    std::fs::write(&temp_file, compiled).unwrap();
+
+    Command::new("rustc")
+        .arg(temp_file)
+        .arg("-o")
+        .arg("./bin")
+        .output()
+        .expect("Failed to compile file.");
 }
 
 fn start_compiler() -> String {
@@ -105,4 +117,12 @@ fn compile_expr(expr: &Expr) -> String {
         Expr::Call { n, args } => format!("{}({})", compile_expr(n), args.iter().map(|e| compile_expr(e)).collect::<Vec<String>>().join(", ")),
         _ => unreachable!("Unrecognised expr: {:?}", expr)
     }
+}
+
+fn get_temp_file() -> String {
+    let dir = std::env::temp_dir();
+    let dir = dir.to_str().unwrap();
+    let file = uuid::Uuid::new_v4();
+
+    format!("{dir}{file}.rs")
 }
