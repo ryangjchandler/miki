@@ -1,0 +1,86 @@
+use crate::ast::*;
+
+grammar;
+
+pub Program: Vec<Stmt> = {
+    <stmts:Stmt*> => stmts,
+}
+
+Stmt: Stmt = {
+    <expr:Expr> => Stmt::Expr{expr},
+    // <v:Var> "=" <expr:Expr> => Stmt::Var{v, expr},
+    "def" <name:Ident> "(" <params:CommaExpr> ")" <body:Block> => Stmt::Def{name, params, body},
+    "return" <expr:Expr> => Stmt::Return{expr},
+    <c:Conditional> => {
+        let (cond, then) = c;
+        Stmt::If{cond, then}
+    }
+}
+
+// FIXME: Add support for else branches.
+Conditional: (Expr, Vec<Stmt>) = {
+    "if" <cond:Expr> <then:Block> => (cond, then),
+}
+
+CommaExpr: Vec<Expr> = {
+    () => vec![],
+    <top:Expr> => vec![top],
+    <top:Expr> "," <end:CommaExpr> => {
+        let mut exprs = end.clone();
+        exprs.insert(0, top);
+        exprs
+    },
+}
+
+Block: Vec<Stmt> = {
+    "{" <stmts:Stmt*> "}" => stmts,
+}
+
+Expr: Expr = {
+    <lhs:Expr> "<" <rhs:Factor> => Expr::LessThan { lhs: Box::new(lhs), rhs: Box::new(rhs) },
+    <t:Term> => t,
+}
+
+Term: Expr = {
+    <lhs:Term> "+" <rhs:Factor> => Expr::Add { lhs: Box::new(lhs), rhs: Box::new(rhs) },
+    <lhs:Term> "-" <rhs:Factor> => Expr::Sub { lhs: Box::new(lhs), rhs: Box::new(rhs) },
+    <f:Factor> => f,
+}
+
+Factor: Expr = {
+    <a:Application> => a,
+}
+
+Application: Expr = {
+    <target:Application> "(" <args:CommaExpr> ")" => Expr::Call{n: Box::new(target), args},
+    <l:Literal> => l,
+}
+
+Literal: Expr = {
+    <i:Int> => Expr::Int{i},
+    <s:Str> => Expr::Str{s},
+    // <v:Var> => Expr::Var{v},
+    <n:Ident> => Expr::Ident{n},
+}
+
+Int: i64 = {
+    <i:r"[0-9]+"> => i.parse().unwrap(),
+}
+
+Str: String = {
+    <s:r##""[^"]*""##> => s.trim_matches('"').to_string(),
+}
+
+Var: String = {
+    <v:r"\$[a-zA-Z_]+"> => v.to_string(),
+}
+
+Ident: String = {
+    <i:r"[a-zA-Z_!]+"> => i.to_string(),
+}
+
+match {
+    r"\s*" => {},
+    r"#[^\n\r]*[\n\r]*" => {},
+    _,
+}

@@ -1,0 +1,9 @@
+def fib(n) {
+    if n < 2
+        return n
+    endif
+
+    return fib(n - 1) + fib(n - 2)
+}
+
+println!("fib(30): {}", fib(30))
